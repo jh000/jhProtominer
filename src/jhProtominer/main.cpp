@@ -1,7 +1,11 @@
 #include"global.h"
 
 // miner version string (for pool statistic)
+#ifdef __WIN32__
 char* minerVersionString = _strdup("jhProtominer v0.1c");
+#else
+char* minerVersionString = _strdup("jhProtominer v0.1c-Linux");
+#endif
 
 minerSettings_t minerSettings = {0};
 
