@@ -1,6 +1,12 @@
+
+#ifdef __WIN32__
 #pragma comment(lib,"Ws2_32.lib")
 #include<Winsock2.h>
 #include<ws2tcpip.h>
+#else
+#include"win.h" // port from windows
+#endif
+
 #include<stdio.h>
 #include<time.h>
 
