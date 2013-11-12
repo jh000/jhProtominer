@@ -49,9 +49,9 @@ typedef void *WSADATA;
 
 #define FIONBIO 0
 
-void WSAIoctl(SOCKET socket, int ig1, uint32_t *ig2, size_t ig3, LPVOID ig4, int ig5, LPDWORD ig6, LPVOID ig7, LPVOID ig8){
-    fcntl(socket, F_SETFL, O_NONBLOCK);
-}
+#define WSAIoctl(socket, ig1, ig2, ig3, ig4, ig5, ig6, ig7, ig8) \
+fcntl(socket, F_SETFL, O_NONBLOCK)
+
 #define WSAGetLastError() errno
 #define WSAEWOULDBLOCK EWOULDBLOCK
 
@@ -62,26 +62,15 @@ typedef struct {
     pthread_mutexattr_t attr;
 } CRITICAL_SECTION;
 
-inline void InitializeCriticalSection(CRITICAL_SECTION *s){
-    pthread_mutexattr_init(&s->attr);
-    pthread_mutexattr_settype(&s->attr, PTHREAD_MUTEX_RECURSIVE);
-    pthread_mutex_init(&s->mutex, &s->attr);
-}
+void InitializeCriticalSection(CRITICAL_SECTION *s);
 
-inline void EnterCriticalSection(CRITICAL_SECTION *s){
-    pthread_mutex_lock(&s->mutex);
-}
+void EnterCriticalSection(CRITICAL_SECTION *s);
 
-inline void LeaveCriticalSection(CRITICAL_SECTION *s){
-    pthread_mutex_unlock(&s->mutex);
-}
+void LeaveCriticalSection(CRITICAL_SECTION *s);
 
 typedef void *(*LPTHREAD_START_ROUTINE)(void *);
 
-inline void CreateThread(LPVOID ig1, size_t ig2, LPTHREAD_START_ROUTINE func, LPVOID arg, uint32_t ig3,  LPDWORD tid){
-    pthread_t thread;
-    pthread_create(&thread, NULL, func, arg);
-}
+void CreateThread(LPVOID ig1, size_t ig2, LPTHREAD_START_ROUTINE func, LPVOID arg, uint32_t ig3,  LPDWORD tid);
 
 #define __declspec(x) __##x
 
