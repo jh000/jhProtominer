@@ -1,0 +1,18 @@
+<?xml version="1.0" encoding="Windows-1252"?>
+<VisualStudioProject
+	ProjectType="Intel C++ Project"
+	Version="11.1"
+	Name="jhProtominer"
+	ProjectGUID="{CDA15955-B8F0-4AED-9ABA-7A5E0B05B4D3}"
+	VCNestedProjectGUID="{CE976CD8-8581-4103-A95E-0E86BD7C0F7B}"
+	VCNestedProjectFileName="jhProtominer.vcproj">
+	<Configurations>
+		<Configuration
+			Name="Release|x64">
+			<Tool
+				Name="CppCmplrTool"
+				GenerateAlternateCodePaths="5"/>
+		</Configuration>
+	</Configurations>
+	<Files/>
+</VisualStudioProject>
