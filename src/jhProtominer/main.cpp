@@ -1,14 +1,14 @@
 #include"global.h"
 
 // miner version string (for pool statistic)
-char* minerVersionString = "jhProtominer v0.1c";
+char* minerVersionString = _strdup("jhProtominer v0.1c");
 
 minerSettings_t minerSettings = {0};
 
 xptClient_t* xptClient = NULL;
 CRITICAL_SECTION cs_xptClient;
 
-struct  
+static struct  
 {
 	CRITICAL_SECTION cs_work;
 	uint32	algorithm;
@@ -393,7 +393,7 @@ void jhProtominer_parseCommandline(int argc, char **argv)
 
 int main(int argc, char** argv)
 {
-	commandlineInput.host = "ypool.net";
+	commandlineInput.host = _strdup("ypool.net");
 	commandlineInput.port = 8080;
 	commandlineInput.ptsMemoryMode = PROTOSHARE_MEM_256;
 	SYSTEM_INFO sysinfo;
