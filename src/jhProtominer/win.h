@@ -78,7 +78,8 @@ void CreateThread(LPVOID ig1, size_t ig2, LPTHREAD_START_ROUTINE func, LPVOID ar
 
 #define __debugbreak() raise(SIGTRAP)
 
-#define GetTickCount() (uint32) time(NULL)
+#define GetTickCount() (uint32) (time(NULL) - 1383638888) * 1000 // A quick hack for time_t overflow
+
 
 #define _strdup strdup
 
