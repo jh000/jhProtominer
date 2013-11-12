@@ -1,15 +1,17 @@
 
-obj=jhlib.o main.o protosharesMiner.o sha2.o transaction.o xptClient.o xptClientPacketHandler.o xptPacketbuffer.o xptServer.o xptServerPacketHandler.o
+obj=jhlib.o main.o protosharesMiner.o sha2.o transaction.o xptClient.o xptClientPacketHandler.o xptPacketbuffer.o xptServer.o xptServerPacketHandler.o win.o
+
+app=jhProtominer
+
+all: $(app)
 
 .o.c:
-	@$(CC) $(CFLAGS) -o $< $@
+	$(CXX) $(CFLAGS) -o $< $@
 
 jhProtominer: $(obj)
-	@echo $(LD) $(LDFLAGS) -o $@ $(obj)
-
-all: jhProtominer
+	$(CXX) $(LDFLAGS) -o $@ $(obj) -lpthread
 
 clean:
-	@-$(RM) *.o jhProtominer
+	$(RM) *.o $(app)
 
 .PHONY: all clean
