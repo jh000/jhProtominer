@@ -74,7 +74,7 @@ void CreateThread(LPVOID ig1, size_t ig2, LPTHREAD_START_ROUTINE func, LPVOID ar
 
 #define __declspec(x) __##x
 
-#define Sleep sleep
+#define Sleep(x) usleep(x*1000)
 
 #define __debugbreak() raise(SIGTRAP)
 
