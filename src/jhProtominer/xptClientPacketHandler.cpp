@@ -68,7 +68,7 @@ bool xptClient_processPacket_blockData1(xptClient_t* xptClient)
 	xptClient->blockWorkInfo.txHashCount = xptPacketbuffer_readU16(xptClient->recvBuffer, &recvError);
 	for(uint32 i=0; i<xptClient->blockWorkInfo.txHashCount; i++)
 	{
-		xptPacketbuffer_readData(xptClient->recvBuffer, xptClient->blockWorkInfo.txHashes+(32*(i+1)), 32, &recvError);
+		xptPacketbuffer_readData(xptClient->recvBuffer, xptClient->blockWorkInfo.txHashes+(32*i), 32, &recvError);
 		// The first hash in xptClient->blockWorkInfo.txHashes is reserved for the coinbase transaction
 	}
 	xptClient->blockWorkInfo.timeWork = time(NULL);
