@@ -66,6 +66,7 @@ bool xptClient_processPacket_blockData1(xptClient_t* xptClient)
 	xptPacketbuffer_readData(xptClient->recvBuffer, xptClient->blockWorkInfo.coinBase2, xptClient->blockWorkInfo.coinBase2Size, &recvError);
 	// information about remaining tx hashes (currently none)
 	xptClient->blockWorkInfo.txHashCount = xptPacketbuffer_readU16(xptClient->recvBuffer, &recvError);
+	printf("New block data - height: %d tx count: %d\n", xptClient->blockWorkInfo.height, xptClient->blockWorkInfo.txHashCount);
 	for(uint32 i=0; i<xptClient->blockWorkInfo.txHashCount; i++)
 	{
 		xptPacketbuffer_readData(xptClient->recvBuffer, xptClient->blockWorkInfo.txHashes+(32*i), 32, &recvError);

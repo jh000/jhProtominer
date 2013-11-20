@@ -7,6 +7,7 @@ minerSettings_t minerSettings = {0};
 
 xptClient_t* xptClient = NULL;
 CRITICAL_SECTION cs_xptClient;
+volatile uint32 monitorCurrentBlockHeight; // used to notify worker threads of new block data
 
 struct  
 {
@@ -36,7 +37,7 @@ uint32 miningStartTime = 0;
 
 void jhProtominer_submitShare(minerProtosharesBlock_t* block)
 {
-	printf("Share found!\n");
+	printf("Share found! (BlockHeight: %d)\n", block->height);
 	EnterCriticalSection(&cs_xptClient);
 	if( xptClient == NULL )
 	{
@@ -169,6 +170,7 @@ void jhProtominer_getWorkFromXPTConnection(xptClient_t* xptClient)
 	//xpc->timeCacheClear = GetTickCount() + CACHE_TIME_WORKER;
 	//xptProxyWorkCache_add(workData->merkleRoot, workData->merkleRootOriginal, sizeof(uint32), (uint8*)&userExtraNonce);
 	LeaveCriticalSection(&workDataSource.cs_work);
+	monitorCurrentBlockHeight = workDataSource.height;
 }
 
 void jhProtominer_xptQueryWorkLoop()
@@ -203,6 +205,7 @@ void jhProtominer_xptQueryWorkLoop()
 				// mark work as invalid
 				EnterCriticalSection(&workDataSource.cs_work);
 				workDataSource.height = 0;
+				monitorCurrentBlockHeight = 0;
 				LeaveCriticalSection(&workDataSource.cs_work);
 				// we lost connection :(
 				printf("Connection to server lost - Reconnect in 45 seconds\n");
@@ -394,7 +397,8 @@ void jhProtominer_parseCommandline(int argc, char **argv)
 int main(int argc, char** argv)
 {
 	commandlineInput.host = "ypool.net";
-	commandlineInput.port = 8080;
+	srand(GetTickCount());
+	commandlineInput.port = 8080 + (rand()%8); // use random port between 8080 and 8088
 	commandlineInput.ptsMemoryMode = PROTOSHARE_MEM_256;
 	SYSTEM_INFO sysinfo;
 	GetSystemInfo( &sysinfo );
@@ -403,7 +407,7 @@ int main(int argc, char** argv)
 	jhProtominer_parseCommandline(argc, argv);
 	minerSettings.protoshareMemoryMode = commandlineInput.ptsMemoryMode;
 	printf("\xC9\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xBB\n");
-	printf("\xBA  jhProtominer (v0.1c)                            \xBA\n");
+	printf("\xBA  jhProtominer (v0.1e)                            \xBA\n");
 	printf("\xBA  author: jh                                      \xBA\n");
 	printf("\xBA  http://ypool.net                                \xBA\n");
 	printf("\xC8\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xBC\n");
