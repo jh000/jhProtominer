@@ -35,7 +35,7 @@ typedef struct
 	uint16 coinBase2Size;
 	uint8 coinBase2[1024];
 	uint32 txHashCount;
-	uint8 txHashes[32*128]; // space for 128 tx hashes
+	uint8 txHashes[32*4096]; // space for 4096 tx hashes
 	// time (set to current value of time(NULL) when we receive the work)
 	uint32 timeWork;
 }xptBlockWorkInfo_t;

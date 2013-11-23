@@ -28,7 +28,7 @@ struct
 	uint16	coinBase1Size;
 	uint16	coinBase2Size;
 	// transaction hashes
-	uint8	txHash[32*256];
+	uint8	txHash[32*4096];
 	uint32	txHashCount;
 }workDataSource;
 
