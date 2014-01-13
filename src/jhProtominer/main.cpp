@@ -1,7 +1,7 @@
 #include"global.h"
 
 // miner version string (for pool statistic)
-char* minerVersionString = "jhProtominer v0.1c";
+char* minerVersionString = "jhProtominer v0.2a";
 
 minerSettings_t minerSettings = {0};
 
@@ -135,7 +135,6 @@ int jhProtominer_minerThread(int threadIndex)
 void jhProtominer_getWorkFromXPTConnection(xptClient_t* xptClient)
 {
 	EnterCriticalSection(&workDataSource.cs_work);
-	workDataSource.height = xptClient->blockWorkInfo.height;
 	workDataSource.version = xptClient->blockWorkInfo.version;
 	//uint32 timeBias = time(NULL) - xptClient->blockWorkInfo.timeWork;
 	workDataSource.nTime = xptClient->blockWorkInfo.nTime;// + timeBias;
@@ -160,22 +159,35 @@ void jhProtominer_getWorkFromXPTConnection(xptClient_t* xptClient)
 		workDataSource.txHashCount = xptClient->blockWorkInfo.txHashCount;
 	for(uint32 i=0; i<xptClient->blockWorkInfo.txHashCount; i++)
 		memcpy(workDataSource.txHash+32*(i+1), xptClient->blockWorkInfo.txHashes+32*i, 32);
-	//// generate unique work from custom extra nonce
-	//uint32 userExtraNonce = xpc->coinbaseSeed;
-	//xpc->coinbaseSeed++;
-	//bitclient_generateTxHash(sizeof(uint32), (uint8*)&userExtraNonce, xpc->xptClient->blockWorkInfo.coinBase1Size, xpc->xptClient->blockWorkInfo.coinBase1, xpc->xptClient->blockWorkInfo.coinBase2Size, xpc->xptClient->blockWorkInfo.coinBase2, xpc->xptClient->blockWorkInfo.txHashes);
-	//bitclient_calculateMerkleRoot(xpc->xptClient->blockWorkInfo.txHashes, xpc->xptClient->blockWorkInfo.txHashCount+1, workData->merkleRoot);
-	//workData->errorCode = 0;
-	//workData->shouldTryAgain = false;
-	//xpc->timeCacheClear = GetTickCount() + CACHE_TIME_WORKER;
-	//xptProxyWorkCache_add(workData->merkleRoot, workData->merkleRootOriginal, sizeof(uint32), (uint8*)&userExtraNonce);
+	// set height last because it is used to detect new work
+	workDataSource.height = xptClient->blockWorkInfo.height;
 	LeaveCriticalSection(&workDataSource.cs_work);
 	monitorCurrentBlockHeight = workDataSource.height;
 }
 
+#define getFeeFromFloat(_x) ((uint16)((float)(_x)/0.002f)) // integer 1 = 0.002%
+
+/*
+ * Initiates a new xpt connection object and sets up developer fee
+ * The new object will be in disconnected state until xptClient_connect() is called
+ */
+xptClient_t* jhProtominer_initateNewXptConnectionObject()
+{
+	xptClient_t* xptClient = xptClient_create();
+	if( xptClient == NULL )
+		return NULL;
+	// set developer fees
+	// up to 8 fee entries can be set
+	// the fee base is always calculated from 100% of the share value
+	// for example if you setup two fee entries with 3% and 2%, the total subtracted share value will be 5%
+	xptClient_addDeveloperFeeEntry(xptClient, "Ptbi961RSBxRqNqWt4khoNDzZQExaVn7zL", getFeeFromFloat(0.005f)); // 0.5% fee (jh00, for testing)
+	return xptClient;
+}
+
 void jhProtominer_xptQueryWorkLoop()
 {
-	xptClient = NULL;
+	// init xpt connection object once
+	xptClient = jhProtominer_initateNewXptConnectionObject();
 	uint32 timerPrintDetails = GetTickCount() + 8000;
 	while( true )
 	{
@@ -183,9 +195,9 @@ void jhProtominer_xptQueryWorkLoop()
 		if( currentTick >= timerPrintDetails )
 		{
 			// print details only when connected
-			if( xptClient )
+			if( xptClient_isDisconnected(xptClient, NULL) == false )
 			{
-				uint32 passedSeconds = time(NULL) - miningStartTime;
+				uint32 passedSeconds = (uint32)time(NULL) - miningStartTime;
 				double collisionsPerMinute = 0.0;
 				if( passedSeconds > 5 )
 				{
@@ -196,7 +208,7 @@ void jhProtominer_xptQueryWorkLoop()
 			timerPrintDetails = currentTick + 8000;
 		}
 		// check stats
-		if( xptClient )
+		if( xptClient_isDisconnected(xptClient, NULL) == false )
 		{
 			EnterCriticalSection(&cs_xptClient);
 			xptClient_process(xptClient);
@@ -209,28 +221,32 @@ void jhProtominer_xptQueryWorkLoop()
 				LeaveCriticalSection(&workDataSource.cs_work);
 				// we lost connection :(
 				printf("Connection to server lost - Reconnect in 45 seconds\n");
-				xptClient_free(xptClient);
-				xptClient = NULL;
+				xptClient_forceDisconnect(xptClient);
 				LeaveCriticalSection(&cs_xptClient);
+				// pause 45 seconds
 				Sleep(45000);
 			}
 			else
 			{
-				// is protoshare algorithm?
+				// is Protoshares algorithm?
 				if( xptClient->clientState == XPT_CLIENT_STATE_LOGGED_IN && xptClient->algorithm != ALGORITHM_PROTOSHARES )
 				{
 					printf("The miner is configured to use a different algorithm.\n");
-					printf("Make sure you miner login details are correct\n");
+					printf("Make sure your miner login details are correct\n");
 					// force disconnect
-					xptClient_free(xptClient);
-					xptClient = NULL;
+					xptClient_forceDisconnect(xptClient);
+					LeaveCriticalSection(&cs_xptClient);
+					// pause 45 seconds
+					Sleep(45000);
 				}
-				else if( xptClient->blockWorkInfo.height != workDataSource.height )
+				else if( xptClient->blockWorkInfo.height != workDataSource.height || memcmp(xptClient->blockWorkInfo.merkleRoot, workDataSource.merkleRootOriginal, 32) != 0 )
 				{
 					// update work
 					jhProtominer_getWorkFromXPTConnection(xptClient);
+					LeaveCriticalSection(&cs_xptClient);
 				}
-				LeaveCriticalSection(&cs_xptClient);
+				else
+					LeaveCriticalSection(&cs_xptClient);
 				Sleep(1);
 			}
 		}
@@ -238,8 +254,7 @@ void jhProtominer_xptQueryWorkLoop()
 		{
 			// initiate new connection
 			EnterCriticalSection(&cs_xptClient);
-			xptClient = xptClient_connect(&minerSettings.requestTarget, 0);
-			if( xptClient == NULL )
+			if( xptClient_connect(xptClient, &minerSettings.requestTarget) == false )
 			{
 				LeaveCriticalSection(&cs_xptClient);
 				printf("Connection attempt failed, retry in 45 seconds\n");
@@ -252,6 +267,7 @@ void jhProtominer_xptQueryWorkLoop()
 				miningStartTime = (uint32)time(NULL);
 				totalCollisionCount = 0;
 			}
+			Sleep(1);
 		}
 	}
 }
@@ -407,7 +423,7 @@ int main(int argc, char** argv)
 	jhProtominer_parseCommandline(argc, argv);
 	minerSettings.protoshareMemoryMode = commandlineInput.ptsMemoryMode;
 	printf("\xC9\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xBB\n");
-	printf("\xBA  jhProtominer (v0.1e)                            \xBA\n");
+	printf("\xBA  jhProtominer (v0.2a)                            \xBA\n");
 	printf("\xBA  author: jh                                      \xBA\n");
 	printf("\xBA  http://ypool.net                                \xBA\n");
 	printf("\xC8\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xCD\xBC\n");
